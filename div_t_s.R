@@ -24,7 +24,7 @@ if (!require("rnaturalearthdata")) install.packages("rnaturalearthdata")
 if (!require("RANN")) install.packages("RANN")  # for fast nearest neighbor search
 
 # Load packages
-library(rstudioapi)
+## library(rstudioapi)
 library(tiff)
 library(terra)
 library(sf)
@@ -69,12 +69,17 @@ n_cells <- ncell(image_EastAfrica)
 res <- matrix(NA, nrow = n_time, ncol = n_cells)
 
 # Loop over time slices and store the cell values
+pb <- txtProgressBar(min = 1, max = n_time, style = 3)
 for (i in 1:n_time) {
+  # add progress based on time
+  setTxtProgressBar(pb, i)
   res[i, ] <- as.vector(image_EastAfrica[[i]])
 }
+close(pb)
 
 # plot a specific time step taking res as input, colour the different cathegories
-p
+t_time <- 1842 
+plot(image_EastAfrica[[t_time]], main=t_time, col = c("red", "green", "blue"), legend = FALSE)
 
 # (For reference, you might want to save or inspect "res" or a summary of it)
 cat("Dimensions of classification matrix (time x cells):", dim(res), "\n")
@@ -94,6 +99,16 @@ cell_coords <- xyFromCell(image_EastAfrica, 1:n_cells)
 
 # We now define the reference classification as the first time step.
 initial_class <- res[1, ]
+
+# stat loop over all classes here
+# For each class, we will compute the distance to the nearest cell of the same class
+# at each subsequent time step.
+the_types <- names(table(res))
+n_types <- length(the_types)
+
+# create dummy per type, a list with sublist with same name as types
+l_types <- vector("list", length = n_types)
+names(l_types) <- the_types
 
 # Create a list to store, for each time step, a vector of movement distances.
 # For time step 1, no cell “moves” (distance = 0).
