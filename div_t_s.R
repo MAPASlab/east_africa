@@ -118,39 +118,119 @@ names(l_types) <- the_types
 # For time step 1, no cell “moves” (distance = 0).
 movement_list <- vector("list", length = n_time)
 movement_list[[1]] <- rep(0, n_cells)
+dummy_list <- lapply(1:(n_time-1), function(x) {
+  list()
+})
+l_summary <- list("extinct"=dummy_list, "new"=dummy_list)
+summary <- list("extinct"=rep(NA, n_time-1), "new"=rep(NA, n_time-1))
+
+
+#### split North and South
+# Create a SpatRaster with 80 rows, 80 columns,
+# extent: xmin=20, xmax=60, ymin=-20, ymax=20, resolution=0.5
+r <- image_EastAfrica[[1]]
+r[] <- 0
+plot(r, main = "Empty Raster with Defined Extent")
+
+points <- cbind(c(20, 60), c(20, -20))
+print(points)
+# Get the coordinates (cell centers) for all cells in the raster.
+xy_coords <- xyFromCell(r, 1:ncell(r))
+# xy_coords is a matrix with two columns: the x and y coordinates of each cell center.
+
+# Compute the expected y value on the line for each x coordinate:
+line_y <- -xy_coords[,1] + 40
+
+# Create a mask for cells above the line: cell center y > line_y.
+mask_above_values <- ifelse(xy_coords[,2] > line_y, 1, NA)
+mask_above <- setValues(r, mask_above_values)
+
+# Create a mask for cells below the line: cell center y < line_y.
+mask_below_values <- ifelse(xy_coords[,2] < line_y, 1, NA)
+mask_below <- setValues(r, mask_below_values)
+
+
+NS_dummy <- list("ALL"=list(),"N"=list(),"S"=list())
+NS_dummy_vector <- list("ALL", "N"=NA, "S"=NA)
 
 # For each subsequent time step, compute for every cell:
 # - If the cell still has its original (initial) class, distance = 0.
 # - Otherwise, find the nearest cell (at that time step) that has the same class
 #   as the cell’s initial class, and record the distance.
 # We use the RANN::nn2 function to perform fast nearest-neighbor searches.
-
 for (t in 2:n_time) {
   current_class <- res[t, ]
-  movement      <- numeric(n_cells)  # will store distances for time step t
+  previous_class <- res[t-1, ]
+  
+  #movement      <- numeric(n_cells)  # will store distances for time step t
   
   current_class[current_class[]!=cl] <- NA
+  current_class[current_class == "NaN"] <- NA
+  # current_class[is.na(current_class)] <- 0
+  
+  previous_class[previous_class[]!=cl] <- NA
+  previous_class[previous_class == "NaN"] <- NA
+  # previous_class[is.na(previous_class)] <- 0
+  
   # initial_class[initial_class[]!=cl] <- NA
   # For cells that already have their original class, no movement is needed.
-  same_idx <- which(current_class == initial_class)
+  same_idx <- which(current_class == previous_class)
   print(current_class[same_idx])
-  movement[same_idx] <- 0
+  # movement[same_idx] <- 0
+  
+  current_class_zero <- current_class
+  current_class_zero[is.na(current_class)] <- 0
+  previous_class_zero <- previous_class
+  previous_class_zero[is.na(previous_class)] <- 0
   
   # For cells that have lost their original class:
-  diff_idx <- which(current_class != cl)
+  diff_idx <- which(previous_class_zero != current_class_zero)
+  # get direction of change, if FALSE, i.e. negative, there was removal of cell
+  # if true or positive, there was an increment of suitable cell
+  diff_idx_dir <- current_class_zero - previous_class_zero
+  diff_idx_dir[diff_idx_dir == 0] <- NA
+  diff_idx_dir[diff_idx_dir > 0] <- 1
+  diff_idx_dir[diff_idx_dir < 0] <- 0
   
-  # plot overlap of class type 3 within the two time steps, grey sites that became unavaiable on next ime
-  plot(image_EastAfrica[[t-1]], main=t-1, col = c(NA, NA, "red"), legend = FALSE)
-  plot(image_EastAfrica[[t]], main=t, col = c(NA, NA, rgb(0,0,0,0.5)), legend = FALSE, add = TRUE)
+ 
+  # plot current time
+  reff <- image_EastAfrica[[t]]
+  plot(reff, main=t, col = c( NA,NA, "green"), legend = FALSE)
+  reff_diff <- reff
+  values(reff_diff) <- diff_idx_dir
+  plot(reff_diff, main=t, col=c("red", "blue"), legend = FALSE, add = TRUE)
+  usr <- par("usr")
+  legend(x = usr[2]-22, y = usr[4]-0,
+         legend = c("unchanged", "extinct", "new"), 
+         fill = c("green", "red", "blue"), 
+         title = "Categories", 
+         bty = "n",      # no box around the legend
+         cex = 0.7)  
+# end plot
   
-  if(length(diff_idx) > 0){
-    #### BROWSER ! ----------
-    browser()
-    # It is efficient to process by the desired (original) class.
-    for (cl in unique(initial_class[diff_idx])) {
+  
+  if(sum(!is.na(diff_idx_dir)) > 0){
+
+  ### WIP
+for (pos_i in c(names(NS_dummy))){
+  if (pos_i=="N"){
+    mask_i <- mask_above
+  } else if (pos_i=="S"){
+    mask_i <- mask_below
+  } else if (pos_i=="ALL"){
+    mask_i <- 1
+  } else {
+    stop("name has to be either N or N")
+  }
+  ### END WIP
+    
+        # It is efficient to process by the desired (original) class.
+    # for (cl in unique(initial_class[diff_idx])) {
       # For this class, identify the cells (among those that changed)
       # whose original classification is cl.
-      target_idx <- diff_idx[ initial_class[diff_idx] == cl ]
+  target_idx <- which((diff_idx_dir*mask_i[])==0)
+      #target_idx <- which(previous_class[diff_idx_dir] == cl)
+      #target_idx <- diff_idx[ previous_class[diff_idx] == cl ]
       
       # In the current time step, find all cells that are of class cl.
       candidate_idx <- which(current_class == cl)
@@ -162,27 +242,36 @@ for (t in 2:n_time) {
         nn_res <- nn2(data = cell_coords[candidate_idx, , drop = FALSE],
                       query = cell_coords[target_idx, , drop = FALSE],
                       k = 1)
-        #  get smalest movement distance that is bigger than zero
-        smallest_dist <- min(nn_res$nn.dists[nn_res$nn.dists > 0])
-        # show a vector with the direction of the change, n s east, west?
-        print(cell_coords[candidate_idx[which.min(nn_res$nn.dists)],])
-        # get vector between these, two values, one for north and another for soth
-        print(cell_coords[candidate_idx[which.min(nn_res$nn.dists)],] - cell_coords[target_idx,])
-
         
-        movement[target_idx] <- nn_res$nn.dists[,1]
+        l_summary$extinct[[t-1]] <- c(nn_res$nn.dists)
+        summary$extinct[t-1] <- mean(nn_res$nn.dists)
+        
+        #show movements
+        arrows(cell_coords[target_idx, 1], cell_coords[target_idx, 2],
+               cell_coords[candidate_idx[nn_res$nn.idx], 1],
+               cell_coords[candidate_idx[nn_res$nn.idx], 2],
+               col = "darkgreen", length = 0.1)
+        
+        #movement[target_idx] <- nn_res$nn.dists[,1]
       } else {
+        l_summary$extinct[[t-1]] <- 0
+        summary$extinct[t-1] <- 0
         # If no candidate cell of the desired class exists, record NA.
-        movement[target_idx] <- NA
+        #movement[target_idx] <- NA
       }
-    } # end for each unique desired class
+    #} # end for each unique desired class
   }
   # Store the movement distances for time step t in the list.
-  movement_list[[t]] <- movement
+  # movement_list[[t]] <- movement
+    
+    
   
-  # (Optional) Print progress every 100 time steps.
-  if(t %% 100 == 0) cat("Processed time step:", t, "of", n_time, "\n")
-}
+  # (Optional) Print progress every 10 time steps.
+  if(t %% 10 == 0) cat("Processed time step:", t, "of", n_time, "\n")
+} # end for each time step
+  NS_dummy[[pos_i]] <- l_summary
+  NS_dummy_vector[[pos_i]] <- summary
+} # end for each position
 
 #####################################
 # SAVE OR ANALYZE THE MOVEMENT DATA
