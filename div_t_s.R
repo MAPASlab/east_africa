@@ -250,7 +250,7 @@ for (pos_i in c(names(NS_dummy))){
         arrows(cell_coords[target_idx, 1], cell_coords[target_idx, 2],
                cell_coords[candidate_idx[nn_res$nn.idx], 1],
                cell_coords[candidate_idx[nn_res$nn.idx], 2],
-               col = "darkgreen", length = 0.1)
+               col = "black", length = 0.1)
         
         #movement[target_idx] <- nn_res$nn.dists[,1]
       } else {
