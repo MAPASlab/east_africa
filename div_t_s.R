@@ -77,9 +77,9 @@ for (i in 1:n_time) {
 }
 close(pb)
 
-# plot a specific time step taking res as input, colour the different cathegories
-t_time <- 1842 
-plot(image_EastAfrica[[t_time]], main=t_time, col = c("red", "green", "blue"), legend = FALSE)
+# # plot a specific time step taking res as input, colour the different cathegories
+# t_time <- 1843 
+# plot(image_EastAfrica[[t_time]], main=t_time, col = c("red", "green", "blue"), legend = FALSE)
 
 # (For reference, you might want to save or inspect "res" or a summary of it)
 cat("Dimensions of classification matrix (time x cells):", dim(res), "\n")
@@ -99,6 +99,10 @@ cell_coords <- xyFromCell(image_EastAfrica, 1:n_cells)
 
 # We now define the reference classification as the first time step.
 initial_class <- res[1, ]
+# define class to study here!
+cl <- 3
+initial_class[initial_class[]!=cl] <- NA
+
 
 # stat loop over all classes here
 # For each class, we will compute the distance to the nearest cell of the same class
@@ -120,17 +124,28 @@ movement_list[[1]] <- rep(0, n_cells)
 # - Otherwise, find the nearest cell (at that time step) that has the same class
 #   as the cell’s initial class, and record the distance.
 # We use the RANN::nn2 function to perform fast nearest-neighbor searches.
+
 for (t in 2:n_time) {
   current_class <- res[t, ]
   movement      <- numeric(n_cells)  # will store distances for time step t
   
+  current_class[current_class[]!=cl] <- NA
+  # initial_class[initial_class[]!=cl] <- NA
   # For cells that already have their original class, no movement is needed.
   same_idx <- which(current_class == initial_class)
+  print(current_class[same_idx])
   movement[same_idx] <- 0
   
   # For cells that have lost their original class:
-  diff_idx <- which(current_class != initial_class)
+  diff_idx <- which(current_class != cl)
+  
+  # plot overlap of class type 3 within the two time steps, grey sites that became unavaiable on next ime
+  plot(image_EastAfrica[[t-1]], main=t-1, col = c(NA, NA, "red"), legend = FALSE)
+  plot(image_EastAfrica[[t]], main=t, col = c(NA, NA, rgb(0,0,0,0.5)), legend = FALSE, add = TRUE)
+  
   if(length(diff_idx) > 0){
+    #### BROWSER ! ----------
+    browser()
     # It is efficient to process by the desired (original) class.
     for (cl in unique(initial_class[diff_idx])) {
       # For this class, identify the cells (among those that changed)
@@ -147,6 +162,14 @@ for (t in 2:n_time) {
         nn_res <- nn2(data = cell_coords[candidate_idx, , drop = FALSE],
                       query = cell_coords[target_idx, , drop = FALSE],
                       k = 1)
+        #  get smalest movement distance that is bigger than zero
+        smallest_dist <- min(nn_res$nn.dists[nn_res$nn.dists > 0])
+        # show a vector with the direction of the change, n s east, west?
+        print(cell_coords[candidate_idx[which.min(nn_res$nn.dists)],])
+        # get vector between these, two values, one for north and another for soth
+        print(cell_coords[candidate_idx[which.min(nn_res$nn.dists)],] - cell_coords[target_idx,])
+
+        
         movement[target_idx] <- nn_res$nn.dists[,1]
       } else {
         # If no candidate cell of the desired class exists, record NA.
