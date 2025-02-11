@@ -116,8 +116,8 @@ names(l_types) <- the_types
 
 # Create a list to store, for each time step, a vector of movement distances.
 # For time step 1, no cell “moves” (distance = 0).
-movement_list <- vector("list", length = n_time)
-movement_list[[1]] <- rep(0, n_cells)
+# movement_list <- vector("list", length = n_time)
+# movement_list[[1]] <- rep(0, n_cells)
 dummy_list <- lapply(1:(n_time-1), function(x) {
   list()
 })
@@ -158,7 +158,7 @@ NS_dummy_vector <- list("ALL", "N"=NA, "S"=NA)
 # - Otherwise, find the nearest cell (at that time step) that has the same class
 #   as the cell’s initial class, and record the distance.
 # We use the RANN::nn2 function to perform fast nearest-neighbor searches.
-for (t in 2:n_time) {
+for (t in 2:n_time) {#5){#
   current_class <- res[t, ]
   previous_class <- res[t-1, ]
   
@@ -175,7 +175,7 @@ for (t in 2:n_time) {
   # initial_class[initial_class[]!=cl] <- NA
   # For cells that already have their original class, no movement is needed.
   same_idx <- which(current_class == previous_class)
-  print(current_class[same_idx])
+  # print(current_class[same_idx])
   # movement[same_idx] <- 0
   
   current_class_zero <- current_class
@@ -209,7 +209,7 @@ for (t in 2:n_time) {
 # end plot
   
   
-  if(sum(!is.na(diff_idx_dir)) > 0){
+
 
   ### WIP
 for (pos_i in c(names(NS_dummy))){
@@ -223,7 +223,7 @@ for (pos_i in c(names(NS_dummy))){
     stop("name has to be either N or N")
   }
   ### END WIP
-    
+  if(sum(!is.na(diff_idx_dir)) > 0){
         # It is efficient to process by the desired (original) class.
     # for (cl in unique(initial_class[diff_idx])) {
       # For this class, identify the cells (among those that changed)
@@ -235,7 +235,7 @@ for (pos_i in c(names(NS_dummy))){
       # In the current time step, find all cells that are of class cl.
       candidate_idx <- which(current_class == cl)
       
-      if (length(candidate_idx) > 0) {
+      if (length(candidate_idx) > 0 & length(target_idx) > 0) {
         # Use the RANN package to find, for each target cell,
         # the distance to the nearest candidate cell.
         # nn2 returns a list with elements "nn.idx" and "nn.dists".
@@ -263,23 +263,51 @@ for (pos_i in c(names(NS_dummy))){
   }
   # Store the movement distances for time step t in the list.
   # movement_list[[t]] <- movement
-    
-    
+    else {
+  l_summary <- 0
+  summary <- 0
+} 
   
   # (Optional) Print progress every 10 time steps.
   if(t %% 10 == 0) cat("Processed time step:", t, "of", n_time, "\n")
-} # end for each time step
+
+  # end for each time step
   NS_dummy[[pos_i]] <- l_summary
   NS_dummy_vector[[pos_i]] <- summary
 } # end for each position
-
+} # end for each time step
 #####################################
 # SAVE OR ANALYZE THE MOVEMENT DATA
 #####################################
 
+saveRDS(NS_dummy, file = "../results/cell_movement_distances.rds")
+saveRDS(NS_dummy_vector, file = "../results/cell_movement_distances_vector.rds")
+
+
+mean_movement_extinct <- NS_dummy_vector$ALL$extinct
+sum_movement_extinct <- lapply(NS_dummy_vector$ALL$extinct, sum)
+area_movement_extinct <- unlist(lapply(NS_dummy$ALL$extinct, length))
+
+### WIP
+# plot movement mean, sum and area across time
+par(mfrow = c(1, 3))
+plot(1:(n_time-1), mean_movement_extinct, type = "l", col = "blue", lwd = 2,
+     xlab = "Time step", ylab = "Mean movement distance",
+     main = "Mean Movement Distance vs Time")
+plot(1:(n_time-1), sum_movement_extinct, type = "l", col = "red", lwd = 2,
+     xlab = "Time step", ylab = "Sum movement distance",
+     main = "Sum Movement Distance vs Time")
+     #, add=T)
+plot(1:(n_time-1), area_movement_extinct, type = "l", col = "blue", lwd = 2,
+     xlab = "Time step", ylab = "Area movement distance",
+     main = "Area Movement Distance vs Time")
+
+# make same as before but in one plot
+
+
 # For example, you can combine the movement data into a matrix
 # with rows = time steps and columns = cells.
-movement_mat <- do.call(rbind, movement_list)
+movement_mat <- do.call(rbind, NS_dummy_vector)
 
 # You might then save the matrix to a CSV file:
 write.csv(movement_mat, file = "../results/cell_movement_distances.csv", row.names = FALSE)
