@@ -30,7 +30,7 @@ library(terra)
 library(sf)
 library(rnaturalearthdata)
 library(RANN)
-
+source("support_functions.R")
 # Set the working directory to the directory where this script is located
 # setwd(dirname(getActiveDocumentContext()$path))
 # (Assume that your data are in the subfolder "data")
@@ -283,6 +283,26 @@ for (pos_i in c(names(NS_dummy))){
 saveRDS(NS_dummy, file = "../results/cell_movement_distances.rds")
 saveRDS(NS_dummy_vector, file = "../results/cell_movement_distances_vector.rds")
 
+
+
+extinct_stats_ALL <- compute_extinct_stats(data=NS_dummy, title="ALL")
+# print(extinct_stats_ALL)
+
+# plot as lines extinct_stats_ALL, from present to the past, i.e. mean, sum and area
+plotlines <- function(data, title){
+  par(mfrow = c(1, 3))
+  plot(data$timeStep, data$mean, type = "l", col = "blue", lwd = 2,
+       xlab = "Time step", ylab = "Mean movement distance",
+       main = "Mean Movement Distance vs Time")
+  lines(data$timeStep, data$sum, type = "l", col = "red", lwd = 2,
+       xlab = "Time step", ylab = "Sum movement distance",
+       main = "Sum Movement Distance vs Time")
+  plot(data$timeStep, data$area, type = "l", col = "blue", lwd = 2,
+       xlab = "Time step", ylab = "Area movement distance",
+       main = "Area Movement Distance vs Time")
+  par(mfrow = c(1, 1))
+}
+plotlines(extinct_stats_ALL, "ALL")
 
 mean_movement_extinct <- NS_dummy_vector$ALL$extinct
 sum_movement_extinct <- lapply(NS_dummy_vector$ALL$extinct, sum)
