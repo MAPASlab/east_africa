@@ -284,25 +284,43 @@ saveRDS(NS_dummy, file = "../results/cell_movement_distances.rds")
 saveRDS(NS_dummy_vector, file = "../results/cell_movement_distances_vector.rds")
 
 
+dummy_list_stats <- list("ALL"=list(), "N"=list(), "S"=list())
+stats <- list("extinct"=dummy_list_stats, "new"=dummy_list_stats)
 
-extinct_stats_ALL <- compute_extinct_stats(data=NS_dummy, title="ALL")
+for (group_i in names(NS_dummy)){
+  stats$extinct[[group_i]] <- compute_stats(data=NS_dummy, group=group_i, type="extinct")
+  stats$new[[group_i]] <- compute_stats(data=NS_dummy, group=group_i, type="new")
+  #print(extinct_stats)
+}
+
+saveRDS(stats, file = "../results/cell_movement_distances_stats.rds")
+
+par(mfrow = c(3, 1))
+# plot all stats for N and S
+for (group_i in 1:length(names(NS_dummy))){
+  group_name_i <- names(NS_dummy)[group_i]
+  group_color <- c("black", "yellow", "darkgreen")[group_i]
+  # empty plot
+  #plot(1, type = "n", xlab = "", ylab = "", xlim = c(0, n_time-1), ylim = c(0, 1))
+  plot(stats$extinct[[group_name_i]][, c("timeStep", "sum")], main=group_name_i, type="l", col=group_color, lwd=1, xlab="kyrs", ylab="Sum movement distance")
+
+}
 # print(extinct_stats_ALL)
 
 # plot as lines extinct_stats_ALL, from present to the past, i.e. mean, sum and area
-plotlines <- function(data, title){
+plotlines <- function(plotdata, title){
   par(mfrow = c(1, 3))
-  plot(data$timeStep, data$mean, type = "l", col = "blue", lwd = 2,
+  plot(plotdata$timeStep, plotdata$mean, type = "l", col = "blue", lwd = 2,
        xlab = "Time step", ylab = "Mean movement distance",
        main = "Mean Movement Distance vs Time")
-  lines(data$timeStep, data$sum, type = "l", col = "red", lwd = 2,
+  plot(plotdata$timeStep, plotdata$area, type = "l", col = "black", lwd = 2,
+       xlab = "Time step", ylab = "Area movement distance",
+       main = "Area Movement Distance vs Time")  
+  plot(plotdata$timeStep, plotdata$sum, type = "l", col = "red", lwd = 2,
        xlab = "Time step", ylab = "Sum movement distance",
        main = "Sum Movement Distance vs Time")
-  plot(data$timeStep, data$area, type = "l", col = "blue", lwd = 2,
-       xlab = "Time step", ylab = "Area movement distance",
-       main = "Area Movement Distance vs Time")
-  par(mfrow = c(1, 1))
 }
-plotlines(extinct_stats_ALL, "ALL")
+plotlines(plotdata=extinct_stats_ALL, "ALL")
 
 mean_movement_extinct <- NS_dummy_vector$ALL$extinct
 sum_movement_extinct <- lapply(NS_dummy_vector$ALL$extinct, sum)
