@@ -8,23 +8,23 @@
 ## Author: Oskar Hagen (oskar@hagen.bio)
 ##=======================================================================##
 
-compute_extinct_stats <- function(group = c("ALL", "N", "S")) {
- browser()
+compute_extinct_stats <- function(data, group = "ALL") {
+ 
    # Ensure group is one of the allowed names
-  group <- match.arg(group)
-  
+  group <- match.arg(group, c("ALL", "N", "S"))
+
   # Extract the mean movement distances for extinct cells.
   # (Assuming that NS_dummy_vector[[group]]$extinct is either already a numeric vector,
   #  or a list that can be unlisted to yield one.)
-  mean_movement_extinct <- NS_dummy_vector[[group]]$extinct
+  mean_movement_extinct <- unlist(lapply(data[[group]]$extinct, mean))
   
   # For each time step, compute the sum of movement distances.
   # (sapply is used to simplify the list into a numeric vector.)
-  browser()
-  sum_movement_extinct <- sapply(NS_dummy_vector[[group]]$extinct, sum)
+
+  sum_movement_extinct <- sapply(data[[group]]$extinct, sum)
   
   # For each time step, determine the "habitat area" as the number of cells.
-  area_movement_extinct <- sapply(NS_dummy[[group]]$extinct, length)
+  area_movement_extinct <- sapply(data[[group]]$extinct, length)
   
   # Option 1: Return a data frame with one row per time step:
   stats_df <- data.frame(
