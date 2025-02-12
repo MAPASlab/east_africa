@@ -120,7 +120,11 @@ names(l_types) <- the_types
 # movement_list[[1]] <- rep(0, n_cells)
 dummy_list <- lapply(1:(n_time-1), function(x) {
   list()
+  #list("ALL"=NA, "N"=NA, "S"=NA)
 })
+# dummy_all_list <- lapply(1:(n_time-1), function(x) {
+#   list()
+# })
 l_summary <- list("extinct"=dummy_list, "new"=dummy_list)
 summary <- list("extinct"=rep(NA, n_time-1), "new"=rep(NA, n_time-1))
 

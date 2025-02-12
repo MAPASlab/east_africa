@@ -9,10 +9,10 @@
 ##=======================================================================##
 
 compute_stats <- function(data, group = "ALL", type="extinct") {
- 
+# browser()
    # Ensure group is one of the allowed names
-  group <- match.arg(group, c("ALL", "N", "S"))
-  type <- match.arg(type, c("extinct", "new"))
+  #group <- match.arg(group, c("ALL", "N", "S"))
+  #type <- match.arg(type, c("extinct", "new"))
 
   # Extract the mean movement distances for extinct cells.
   # (Assuming that NS_dummy_vector[[group]]$extinct is either already a numeric vector,
@@ -22,7 +22,7 @@ compute_stats <- function(data, group = "ALL", type="extinct") {
   # For each time step, compute the sum of movement distances.
   # (sapply is used to simplify the list into a numeric vector.)
 
-  sum_movement_type <- sapply(data[[group]]$extinct, sum)
+  sum_movement_type <- unlist(lapply(data[[group]]$extinct, sum))
   
   # For each time step, determine the "habitat area" as the number of cells.
   area_movement_type <- sapply(data[[group]]$extinct, length)
