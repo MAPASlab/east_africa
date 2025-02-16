@@ -1,6 +1,6 @@
 ## METADATA ===============================================================
-## Description: Get distance stats across sites from different classses
-## and integrate thouht time.
+## Description: Get distance stats across sites from different classes
+## and integrate thought time.
 ## # CELL MOVEMENT ANALYSIS
 ## # This script loads the EastAfrica climate classification data,
 ## # extracts the classification for every time step,
@@ -134,7 +134,7 @@ summary <- list("extinct"=rep(NA, n_time-1), "new"=rep(NA, n_time-1))
 # extent: xmin=20, xmax=60, ymin=-20, ymax=20, resolution=0.5
 r <- image_EastAfrica[[1]]
 r[] <- 0
-plot(r, main = "Empty Raster with Defined Extent")
+# plot(r, main = "Empty Raster with Defined Extent")
 
 points <- cbind(c(20, 60), c(20, -20))
 print(points)
@@ -162,7 +162,7 @@ NS_dummy_vector <- list("ALL", "N"=NA, "S"=NA)
 # - Otherwise, find the nearest cell (at that time step) that has the same class
 #   as the cell’s initial class, and record the distance.
 # We use the RANN::nn2 function to perform fast nearest-neighbor searches.
-for (t in 2:n_time) {#5){#
+for (t in 2:n_time) {#5){#  ### ALLAWYS START ON 2 or more, never on 1
   current_class <- res[t, ]
   previous_class <- res[t-1, ]
   
@@ -217,6 +217,8 @@ for (t in 2:n_time) {#5){#
 
   ### WIP
 for (pos_i in c(names(NS_dummy))){
+  diff_idx_dir_r <- mask_above
+  diff_idx_dir_r[] <- diff_idx_dir
   if (pos_i=="N"){
     mask_i <- mask_above
   } else if (pos_i=="S"){
@@ -268,16 +270,16 @@ for (pos_i in c(names(NS_dummy))){
   # Store the movement distances for time step t in the list.
   # movement_list[[t]] <- movement
     else {
-  l_summary <- 0
-  summary <- 0
+  l_summary$extinct[[t-1]] <- 0
+  summary$extinct[t-1] <- 0
 } 
   
   # (Optional) Print progress every 10 time steps.
   if(t %% 10 == 0) cat("Processed time step:", t, "of", n_time, "\n")
 
   # end for each time step
-  NS_dummy[[pos_i]] <- l_summary
-  NS_dummy_vector[[pos_i]] <- summary
+  NS_dummy[[pos_i]]$extinct[[t-1]] <- l_summary$extinct[[t-1]]
+  #NS_dummy_vector[[pos_i]]$extinct <- summary
 } # end for each position
 } # end for each time step
 #####################################
@@ -288,12 +290,16 @@ saveRDS(NS_dummy, file = "../results/cell_movement_distances.rds")
 saveRDS(NS_dummy_vector, file = "../results/cell_movement_distances_vector.rds")
 
 
+# read rds
+NS_dummy <- readRDS("../results/cell_movement_distances.rds")
+
+
 dummy_list_stats <- list("ALL"=list(), "N"=list(), "S"=list())
 stats <- list("extinct"=dummy_list_stats, "new"=dummy_list_stats)
 
 for (group_i in names(NS_dummy)){
   stats$extinct[[group_i]] <- compute_stats(data=NS_dummy, group=group_i, type="extinct")
-  stats$new[[group_i]] <- compute_stats(data=NS_dummy, group=group_i, type="new")
+  #stats$new[[group_i]] <- compute_stats(data=NS_dummy, group=group_i, type="new")
   #print(extinct_stats)
 }
 
@@ -309,6 +315,38 @@ for (group_i in 1:length(names(NS_dummy))){
   plot(stats$extinct[[group_name_i]][, c("timeStep", "sum")], main=group_name_i, type="l", col=group_color, lwd=1, xlab="kyrs", ylab="Sum movement distance")
 
 }
+
+
+
+
+# new plot
+
+par(mfrow = c(3, 1), mar = c(2, 4, 2, 1), oma = c(4, 0, 0, 0))  # Adjust margins
+
+# plot all stats for N and S
+for (group_i in 1:length(names(NS_dummy))) {
+  group_name_i <- names(NS_dummy)[group_i]
+  group_color <- c("magenta", "blue", "red")[group_i]
+  
+  # Determine x-axis label conditionally
+  xlab_value <- ifelse(group_i == length(names(NS_dummy)), "kyrs", "")
+  
+  # Plot the data
+  plot(stats$extinct[[group_name_i]][, c("timeStep", "mean")], 
+       main = group_name_i, type = "l", col = group_color, 
+       lwd = 1, xlab = xlab_value, ylab = "Mean movement distance", xaxt = ifelse(group_i == length(names(NS_dummy)), "s", "n"))
+}
+
+
+plot(stats$extinct[["S"]][, c( "sum")]-stats$extinct[["N"]][, c("sum")], type="l", main="S-N", ylab="diff S-N sum movement", xlab="years ago")
+
+
+
+
+plot(stats$extinct[["S"]][, c( "mean")]-stats$extinct[["N"]][, c("mean")], type="l", main="S-N", ylab="diff S-N mean movement", xlab="years ago")
+abline(h=0, col="red")
+
+
 # print(extinct_stats_ALL)
 
 # plot as lines extinct_stats_ALL, from present to the past, i.e. mean, sum and area

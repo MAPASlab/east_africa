@@ -51,3 +51,4 @@ rsconnect/
 #do not follow folder data
 data/
 
+*.jpeg
